@@ -31,10 +31,15 @@
 ### 方式一：从 ZIP 安装（推荐）
 
 1. 打开 MaiBot WebUI → 插件 → 从 ZIP 安装
-2. 选择 `office-toolkit-1.0.0.zip`
+2. 选择 Release 里下载的 `office-toolkit-1.2.5.zip`（GitHub 自动生成的源码包，根目录即插件目录）
 3. 重启 MaiBot
 
-### 方式二：手工放目录
+### 方式二：从 GitHub Release 装
+
+到 [Releases](https://github.com/qiaozhixiang/office-toolkit-dist/releases) 下载对应版本的
+`Source code (zip)`，解压后得到 `office-toolkit-dist-<版本>/` 目录，直接放进 `MaiBot/plugins/`。
+
+### 方式三：手工放目录
 
 把整个 `office-toolkit` 目录放进 `MaiBot/plugins/`，重启 MaiBot。
 
@@ -131,7 +136,7 @@
 ```toml
 [plugin]
 enabled = true
-config_version = "1.2.0"
+config_version = "1.2.5"
 
 [storage]
 workspace = ""            # 留空 = 插件数据目录下的 files

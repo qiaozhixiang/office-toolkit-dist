@@ -3,7 +3,7 @@
 
 [plugin]
 enabled = true
-config_version = "1.2.4"
+config_version = "1.2.5"
 
 [storage]
 # 生成文件的工作区；留空 = <插件数据目录>/files
