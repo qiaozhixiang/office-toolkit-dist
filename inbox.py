@@ -11,11 +11,13 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import mimetypes
 import os
 import re
 import shutil
+import socket
 import time
 import urllib.parse
 import urllib.request
@@ -32,6 +34,79 @@ _FILE_TEXT_RE = re.compile(
 )
 
 _SAFE_NAME_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+_ALLOWED_SCHEMES = frozenset({"http", "https"})
+
+_BLOCKED_HOSTS = frozenset(
+    {
+        "localhost",
+        "localhost.localdomain",
+        "ip6-localhost",
+        "ip6-loopback",
+        "metadata",
+        "metadata.google.internal",
+        "instance-data",
+    }
+)
+
+_BLOCKED_SUFFIXES = (".localhost", ".local", ".internal", ".localdomain")
+
+
+def _host_is_internal(host: str) -> bool:
+    """主机名是否指向本机 / 内网 / 链路本地 / 保留地址。"""
+
+    name = (host or "").strip().strip("[]").rstrip(".").casefold()
+    if not name:
+        return True
+    if name in _BLOCKED_HOSTS or name.endswith(_BLOCKED_SUFFIXES):
+        return True
+    try:
+        infos = socket.getaddrinfo(name, None)
+    except OSError:
+        return True  # 解析不出来就当不可信
+    for info in infos:
+        raw = info[4][0] if len(info) > 4 else ""
+        try:
+            address = ipaddress.ip_address(str(raw).split("%", 1)[0])
+        except ValueError:
+            return True
+        if (
+            address.is_loopback
+            or address.is_private
+            or address.is_link_local
+            or address.is_reserved
+            or address.is_multicast
+            or address.is_unspecified
+        ):
+            return True
+    return False
+
+
+def check_download_url(url: str) -> str:
+    """校验下载链接：只允许 http(s)，且不得指向本机或内网。返回规范化后的 URL。"""
+
+    text = str(url or "").strip()
+    if not text:
+        raise ValueError("缺少下载链接")
+    if text.startswith("//"):
+        text = "https:" + text
+    parsed = urllib.parse.urlparse(text)
+    scheme = (parsed.scheme or "").lower()
+    if scheme not in _ALLOWED_SCHEMES:
+        raise ValueError("只支持 http/https 链接")
+    if not parsed.hostname:
+        raise ValueError("下载链接缺少主机名")
+    if _host_is_internal(parsed.hostname):
+        raise ValueError("不允许访问本机或内网地址")
+    return text
+
+
+class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """跳转时重新做一次来源校验，避免被 302 带去内网。"""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102
+        check_download_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def safe_filename(name: str, *, fallback: str = "file") -> str:
@@ -287,20 +362,12 @@ class InboxStore:
         timeout: float = 20.0,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        """下载远端文件并入库。``file://`` 直接当本地路径处理。"""
+        """下载远端文件并入库。只接受 http(s)，且拒绝本机/内网地址。"""
 
-        url = str(url or "").strip()
-        if not url:
-            raise ValueError("缺少下载链接")
-        if url.startswith("file://"):
-            local = Path(urllib.request.url2pathname(urllib.parse.urlparse(url).path))
-            return self.add_path(local, name=name or local.name, **kwargs)
+        url = check_download_url(url)
 
-        if url.startswith("//"):
-            url = "https:" + url
-
-        request = urllib.request.Request(url, headers={"User-Agent": "MaiBot-OfficeToolkit/1.1"})
-        handlers: List[Any] = []
+        request = urllib.request.Request(url, headers={"User-Agent": "MaiBot-OfficeToolkit/1.2"})
+        handlers: List[Any] = [_SafeRedirectHandler()]
         if proxy and url.lower().startswith(("http://", "https://")):
             handlers.append(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
         opener = urllib.request.build_opener(*handlers)

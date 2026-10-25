@@ -7,11 +7,11 @@
 | 能力 | 风险 | 建议 |
 | --- | --- | --- |
 | 读取文件 | 工作区与 `allowed_roots` 内的文件可被预览、打包、发送 | 用 `[storage] allowed_roots` 限制在专用目录 |
-| 写入文件 | 生成 docx/xlsx/pptx/zip，解压 ZIP | 解压已做目录穿越校验，但仍建议只对可信压缩包使用 |
+| 写入文件 | 生成 docx/xlsx/pptx/zip，解压 ZIP | 解压已做目录穿越校验，且目标目录限工作区或 `allowed_roots` 内；仍建议只对可信压缩包使用 |
 | 删除文件 | `/office rm`、`/office batch delete` 会真删 | 只把管理员加进 `[whitelist] admins` |
 | 发送文件 | 通过 `file` 消息段发到当前会话 | 不要把含隐私的目录加进 `allowed_roots` |
 | 智能指令 | 模型生成的计划会被自动执行 | `[ai] allow_delete = false`；必要时 `dry_run = true` 先看计划 |
-| 聊天文件入库 | 群里别人发的文件会自动落盘 | `[inbox] max_file_mb` 限制大小，定期清理 `data/inbox` |
+| 聊天文件入库 | 白名单用户发的文件会自动落盘 | 只接受 `http`/`https` 链接并拒绝本机与内网地址；`[inbox] max_file_mb` 限制大小，定期清理 `data/inbox` |
 
 ## 隐私
 
@@ -22,7 +22,8 @@
 ## 白名单
 
 `[whitelist] qq_numbers` 与 `admins` 之外的用户，`/office` 消息会被静默忽略
-（不回复、不进入模型）。**默认配置为空 = 所有人都不能用**，请先填自己的 QQ 号。
+（不回复、不进入模型），其发来的聊天文件也不会自动入库。
+**默认配置为空 = 所有人都不能用**，请先填自己的 QQ 号。
 
 ## 无担保
 

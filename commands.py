@@ -316,12 +316,7 @@ class OfficeCommandMixin:
             await self._office_say(stream_id, "用法：/office unzip <压缩包路径|#序号> [目标目录]")
             return
         source = self._resolve_token(user_id, source_token)
-        if dest_text.strip():
-            dest = Path(dest_text.strip()).expanduser()
-            if not dest.is_absolute():
-                dest = self._workspace() / dest
-        else:
-            dest = self._workspace() / f"{source.stem}_解压"
+        dest = self._resolve_dest(dest_text.strip(), fallback=self._workspace() / f"{source.stem}_解压")
         info = self._extract_zip(source, dest)
         await self._office_say(stream_id, f"已解压 {info['entries']} 个文件到：{info['dest']}")
 

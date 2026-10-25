@@ -135,6 +135,23 @@ def resolve_user_path(raw: str, *, workspace: Path, allowed_roots: Sequence[str]
     return resolved
 
 
+def ensure_within(path: Path, roots: Sequence[Any], *, message: str = "") -> Path:
+    """要求 ``path`` 落在 ``roots`` 里的某个目录之内（含根本身）。"""
+
+    try:
+        resolved = Path(path).resolve()
+    except OSError as exc:
+        raise PathError(f"路径无法解析：{exc}") from exc
+    for root in roots or []:
+        try:
+            root_path = Path(str(root)).expanduser().resolve()
+        except OSError:
+            continue
+        if resolved == root_path or root_path in resolved.parents:
+            return resolved
+    raise PathError(message or "目标目录只能放在工作区或 storage.allowed_roots 里")
+
+
 def file_meta(path: Path) -> Dict[str, Any]:
     stat = path.stat()
     return {

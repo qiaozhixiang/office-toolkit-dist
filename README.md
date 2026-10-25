@@ -87,7 +87,7 @@
 | `/office xlsx <名称> <内容>` | 生成 Excel |
 | `/office pptx <名称> <大纲>` | 生成 PPT |
 | `/office zip <名称> <路径...>` | 打包成 ZIP |
-| `/office unzip <压缩包> [目录]` | 解压 ZIP |
+| `/office unzip <压缩包> [目录]` | 解压 ZIP（目标目录限工作区或 `allowed_roots` 内） |
 | `/office dsh [序号]` | 列出 / 发送 DSH 会话生成的文件 |
 | `/office rm <路径\|#序号>` | 删除工作区文件 |
 | `/office inbox [关键字]` | 查看聊天里收到的文件（收件箱） |
@@ -131,12 +131,13 @@
 
 ## 配置
 
-`config.toml` 各节与插件配置页一一对应。
+`config.toml` 由 MaiBot 在首次加载插件时按插件内的配置模型自动生成到插件数据目录，**仓库里不附带这个文件**，也不要把运行时的 `config.toml` 提交回仓库。
+配置项与插件配置页一一对应，下面是生成后的默认内容：
 
 ```toml
 [plugin]
 enabled = true
-config_version = "1.2.5"
+config_version = "1.2.6"
 
 [storage]
 workspace = ""            # 留空 = 插件数据目录下的 files
@@ -232,7 +233,6 @@ dry_run = false           # true = 只解析计划不执行
 ```text
 office-toolkit/
 ├── _manifest.json       插件清单（manifest v2）
-├── config.toml          默认配置
 ├── plugin.py            插件主体：配置模型 + API + 生命周期
 ├── commands.py          /office 命令层
 ├── commands_extra.py    收件箱/差异/批处理/成绩/格式化/智能指令子命令
@@ -256,7 +256,7 @@ office-toolkit/
 
 - 仅使用 Python 3.10+ 标准库与 `maibot_sdk`
 - 同目录模块通过带前缀的模块名加载（`maibot_community_office_toolkit.*`），避免与其他插件重名
-- 不写死任何本机路径、QQ 号或令牌；`config.toml` 里全是占位值
+- 不写死任何本机路径、QQ 号或令牌；配置项默认值全是占位值
 
 ## 安全
 
@@ -264,6 +264,8 @@ office-toolkit/
 - 设置 `storage.allowed_roots` 可进一步把可读写范围限制在工作区
 - `/office rm` 只能删除工作区内的文件
 - 解压 ZIP 时校验目标路径，阻止 `../` 目录穿越
+- `/office unzip` 与 `unzip_file` API 的目标目录同样走路径校验（敏感目录黑名单与 `storage.allowed_roots` 都生效）
+- 收件箱只接受 `http` / `https` 链接，拒绝 `file://`、本机地址、内网与链路本地地址（跳转后会重新校验一次），且只有白名单用户的文件会自动入库
 
 ## 已知限制
 

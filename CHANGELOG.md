@@ -1,11 +1,25 @@
 # 更新日志
 
+## 1.2.6
+
+### 修复
+
+- 收件箱下载只接受 `http` / `https`：去掉 `file://` 分支，拒绝本机、内网、链路本地与保留地址，并在 HTTP 跳转时重新校验一次，避免聊天里的构造文本把本机文件或内网地址拉进收件箱。
+- 自动入库加上与 `/office` 一致的白名单判断：非白名单用户发来的文件不再自动入库。
+- `/office unzip` 与 `unzip_file` API 的目标目录改为走 `resolve_user_path` 校验，敏感目录黑名单与 `storage.allowed_roots` 从此对解压目标同样生效（原先接受任意绝对路径）。
+- `host_application.max_version` 由 `999.999.999` 改为 `1.3.99`，与已实测的宿主版本区间一致。
+
+### 变更
+
+- 仓库不再跟踪 `config.toml`：运行时配置由 MaiBot 按配置模型自动生成，`.gitignore` 增加 `/config.toml`，避免用户改过的配置在升级时与仓库版本冲突。
+- `plugin_type` 由 `extension` 改为 `tool`，更贴合「命令 + WebUI 文件工具」的实际形态。
+
 ## 1.2.5
 
 ### 修复
 
 - `config_version` 默认值与 `config.toml` 对齐到插件版本（原先模型默认 `1.2.2`、配置文件 `1.2.4`，两边不同会让 MaiBot 每次启动都判定「配置版本升级」并重写 `config.toml`，把用户手写的注释冲掉）。
-- `host_application.max_version` 从 `1.3.99` 放宽到 `999.999.999`：按 MaiBot 官方建议只认真约束 `min_version`，避免 Host 升级一个小版本插件就被判为不兼容而拒绝加载。
+- `host_application.max_version` 从 `1.3.99` 放宽到 `999.999.999`。（1.2.6 起改回 `1.3.99`：插件商店要求上界对应实际验证过的宿主版本。）
 
 ### 文档
 

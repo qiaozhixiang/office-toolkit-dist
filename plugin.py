@@ -84,6 +84,7 @@ kind_label = _office_io.kind_label
 
 PathError = _files.PathError
 resolve_user_path = _files.resolve_user_path
+ensure_within = _files.ensure_within
 file_meta = _files.file_meta
 to_file_payload = _files.to_file_payload
 sanitize_name = _files.sanitize_name
@@ -141,7 +142,7 @@ class PluginSectionConfig(PluginConfigBase):
     __ui_order__ = 0
 
     enabled: bool = Field(default=True, description="是否启用插件")
-    config_version: str = Field(default="1.2.5", description="配置版本")
+    config_version: str = Field(default="1.2.6", description="配置版本")
 
 
 class StorageConfig(PluginConfigBase):
@@ -322,6 +323,10 @@ class OfficeToolkitPlugin(OfficeCommandMixin, OfficeExtraCommandMixin, MaiBotPlu
         sender_id = str(message.get("user_id") or message.get("sender_id") or "")
         sender_name = str(message.get("user_name") or message.get("sender_name") or "")
         message_id = str(message.get("message_id") or "")
+        # 与 /office 命令一致的白名单判断：非白名单用户的文件不入库
+        if not self._office_allowed(sender_id):
+            self.ctx.logger.debug(f"收件箱：忽略非白名单用户 {sender_id} 的文件")
+            return True, True, None, None, None
         limit = max(1, int(cfg.max_file_mb or 50)) * 1024 * 1024
         saved = skipped = 0
         for segment in segments:
@@ -437,6 +442,17 @@ class OfficeToolkitPlugin(OfficeCommandMixin, OfficeExtraCommandMixin, MaiBotPlu
         if error is not None:
             raise error
         raise PathError(f"找不到文件：{text}")
+
+    def _resolve_dest(self, raw: str, *, fallback: Path) -> Path:
+        """把解压目标解析成绝对路径：先做常规安全校验，再要求落在工作区或 allowed_roots 内。"""
+
+        text = (raw or "").strip().strip('"').strip("'")
+        if not text:
+            return fallback
+        target = resolve_user_path(text, workspace=self._workspace(), allowed_roots=self._allowed_roots())
+        roots: List[Path] = [self._workspace()]
+        roots.extend(Path(item).expanduser() for item in self._allowed_roots())
+        return ensure_within(target, roots, message="解压目录只能放在工作区或 storage.allowed_roots 里")
 
     def _new_workspace_path(self, name: str) -> Path:
         safe = sanitize_name(name)
@@ -917,9 +933,7 @@ class OfficeToolkitPlugin(OfficeCommandMixin, OfficeExtraCommandMixin, MaiBotPlu
     @API("unzip_file", description="解压 ZIP 到工作区", version="1")
     async def unzip_file(self, path: str, dest: str = "") -> Dict[str, Any]:
         source = resolve_user_path(path, workspace=self._workspace(), allowed_roots=self._allowed_roots())
-        target = Path(dest).expanduser() if str(dest or "").strip() else self._workspace() / f"{source.stem}_解压"
-        if not target.is_absolute():
-            target = self._workspace() / target
+        target = self._resolve_dest(dest, fallback=self._workspace() / f"{source.stem}_解压")
         info = extract_zip(source, target)
         return {"ok": True, "dest": info.get("dest"), "entries": info.get("entries")}
 
