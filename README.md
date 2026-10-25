@@ -137,7 +137,7 @@
 ```toml
 [plugin]
 enabled = true
-config_version = "1.2.6"
+config_version = "1.2.7"
 
 [storage]
 workspace = ""            # 留空 = 插件数据目录下的 files

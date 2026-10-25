@@ -1079,8 +1079,10 @@ def extract_zip(path: Path, dest: Path) -> Dict[str, Any]:
     with zipfile.ZipFile(path) as archive:
         for info in archive.infolist():
             target = (dest / info.filename).resolve()
-            if not str(target).startswith(str(root)):
-                raise OfficeError(f"压缩包包含非法路径：{info.filename}")
+            try:
+                target.relative_to(root)
+            except ValueError:
+                raise OfficeError(f"压缩包包含非法路径：{info.filename}") from None
             if info.is_dir():
                 target.mkdir(parents=True, exist_ok=True)
                 continue

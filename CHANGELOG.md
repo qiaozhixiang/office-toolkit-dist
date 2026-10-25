@@ -1,5 +1,11 @@
 # 更新日志
 
+## 1.2.7
+
+### 修复
+
+- `extract_zip` 判断目录穿越改用 `Path.relative_to`，不再用字符串前缀比较：此前 `workspace` 与 `workspace-evil` 这类同前缀的兄弟目录理论上能绕过检查。解压目标本身已限制在工作区或 `storage.allowed_roots` 内，实际利用条件有限，这里按插件商店审核建议收紧。
+
 ## 1.2.6
 
 ### 修复
